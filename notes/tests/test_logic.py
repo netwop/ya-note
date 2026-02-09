@@ -14,7 +14,7 @@ User = get_user_model()
 
 
 class TestNoteCreation(TestCase):
-    # Текст комментария понадобится в нескольких местах кода, 
+    # Текст комментария понадобится в нескольких местах кода,
     # поэтому запишем его в атрибуты класса.
     NOTE_TEXT = 'Текст заметки'
 
@@ -32,7 +32,7 @@ class TestNoteCreation(TestCase):
 
     def test_anonymous_user_cant_create_note(self):
         # Совершаем запрос от анонимного клиента, в POST-запросе отправляем
-        # предварительно подготовленные данные формы с текстом комментария.     
+        # предварительно подготовленные данные формы с текстом комментария.
         self.client.post(self.url, data=self.form_data)
         # Считаем количество комментариев.
         notes_count = Note.objects.count()
@@ -74,8 +74,8 @@ class TestNoteCreation(TestCase):
 
 
 class TestNoteEditDelete(TestCase):
-    # Тексты для комментариев не нужно дополнительно создавать 
-    # (в отличие от объектов в БД), им не нужны ссылки на self или cls, 
+    # Тексты для комментариев не нужно дополнительно создавать
+    # (в отличие от объектов в БД), им не нужны ссылки на self или cls,
     # поэтому их можно перечислить просто в атрибутах класса.
     NOTE_TEXT = 'Текст заметки'
     NEW_NOTE_TEXT = 'Обновлённый текст заметки'
@@ -83,11 +83,6 @@ class TestNoteEditDelete(TestCase):
     @classmethod
     def setUpTestData(cls):
         # Создаём новость в БД.
-        cls.notes = Note.objects.create(title='Заголовок', text='Текст')
-        # Формируем адрес блока с комментариями, который понадобится для тестов.
-        notes_url = reverse('notes:detail', args=(cls.notes.id,))  # Адрес заметки.
-        cls.url_to_notes = notes_url + '#notes'  # Адрес блока с заметками.
-        # Создаём пользователя - автора комментария.
         cls.author = User.objects.create(username='Автор заметки')
         # Создаём клиент для пользователя-автора.
         cls.author_client = Client()
@@ -97,14 +92,20 @@ class TestNoteEditDelete(TestCase):
         cls.reader = User.objects.create(username='Читатель')
         cls.reader_client = Client()
         cls.reader_client.force_login(cls.reader)
+        cls.notes = Note.objects.create(title='Заголовок', text = cls.NOTE_TEXT, author = cls.author)
+        # Формируем адрес блока с комментариями, который понадобится для тестов.
+        cls.notes_url = reverse('notes:detail', args=(cls.notes.slug,))  # Адрес заметки.
+        cls.url_to_notes = reverse('notes:success') #notes_url + '#notes'  # Адрес блока с заметками.
+        # Создаём пользователя - автора комментария.
+
         # Создаём объект комментария.
-       
+
         # URL для редактирования комментария.
-        cls.edit_url = reverse('notes:edit', args=(cls.notes.id,)) 
+        cls.edit_url = reverse('notes:edit', args=(cls.notes.slug,))
         # URL для удаления комментария.
-        cls.delete_url = reverse('notes:delete', args=(cls.notes.id,))  
+        cls.delete_url = reverse('notes:delete', args=(cls.notes.slug,))
         # Формируем данные для POST-запроса по обновлению комментария.
-        cls.form_data = {'text': cls.NEW_NOTE_TEXT}
+        cls.form_data = {'text': cls.NEW_NOTE_TEXT, 'title': cls.notes.title}
 
     def test_author_can_delete_note(self):
         # От имени автора комментария отправляем DELETE-запрос на удаление.
@@ -116,7 +117,7 @@ class TestNoteEditDelete(TestCase):
         # Считаем количество комментариев в системе.
         notes_count = Note.objects.count()
         # Ожидаем ноль комментариев в системе.
-        self.assertEqual(notes_count, 0) 
+        self.assertEqual(notes_count, 0)
 
     def test_user_cant_delete_note_of_another_user(self):
         # Выполняем запрос на удаление от пользователя-читателя.
@@ -143,6 +144,6 @@ class TestNoteEditDelete(TestCase):
         # Проверяем, что вернулась 404 ошибка.
         self.assertEqual(response.status_code, HTTPStatus.NOT_FOUND)
         # Обновляем объект комментария.
-        self.note.refresh_from_db()
+        self.notes.refresh_from_db()
         # Проверяем, что текст остался тем же, что и был.
-        self.assertEqual(self.note.text, self.NOTE_TEXT)
+        self.assertEqual(self.notes.text, self.NOTE_TEXT)
