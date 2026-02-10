@@ -1,21 +1,29 @@
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.utils import timezone
-from django.test import TestCase
-# Импортируем функцию reverse(), она понадобится для получения адреса страницы.
+from django.test import Client, TestCase
 from django.urls import reverse
 
 from notes.models import Note
 from notes.forms import NoteForm
+from yanote.settings import NOTES_COUNT_ON_HOME_PAGE
 
 User = get_user_model()
 
 class TestHomePage(TestCase):
-    HOME_URL = reverse('notes:home')
-
 
     @classmethod
     def setUpTestData(cls):
+
+        cls.author = User.objects.create(username='Автор заметки')
+        cls.author_client = Client()
+        cls.author_client.force_login(cls.author)
+        cls.reader = User.objects.create(username='Читатель')
+        cls.reader_client = Client()
+        cls.reader_client.force_login(cls.reader)
+        cls.note = Note.objects.create(title='Заголовок', text = 'Текст', slug = 'slug', author=cls.author)
+        cls.home_url = reverse('notes:list')
+
         all_notes = [
             Note(
                 title=f'Новость {index}',
@@ -25,44 +33,52 @@ class TestHomePage(TestCase):
         ]
         Note.objects.bulk_create(all_notes)
 
-    def test_note_in_list(self):
-        # Загружаем главную страницу.
-        response = self.client.get(self.HOME_URL)
-        # Код ответа не проверяем, его уже проверили в тестах маршрутов.
-        # Получаем список объектов из словаря контекста.
+    def test_notes_list_for_reader(self):
+        response = self.client.get(self.home_url)
         object_list = response.context['object_list']
-        # Определяем количество записей в списке.
-        news_count = object_list.count()
-        # # Проверяем, что на странице именно 10 новостей.
-        self.assertEqual(news_count, settings.NEWS_COUNT_ON_HOME_PAGE)
+        self.assertContains(self.note, object_list)
+
+    def test_notes_list_for_author(self):
+        response = self.author_client.get(self.home_url)
+        object_list = response.context['object_list']
+        self.assertContains(self.note, object_list)
 
 
 class TestDetailPage(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.notes = Note.objects.create(
-            title='Тестовая заметка', text='Просто текст.'
-        )
-        # Сохраняем в переменную адрес страницы с новостью:
-        cls.detail_url = reverse('notes:detail', args=(cls.notes.id,))
+
         cls.author = User.objects.create(username='Автор заметки')
+        cls.author_client = Client()
+        cls.author_client.force_login(cls.author)
+        cls.reader = User.objects.create(username='Читатель')
+        cls.reader_client = Client()
+        cls.reader_client.force_login(cls.reader)
+        cls.note = Note.objects.create(title='Заголовок', text = 'Текст', slug = 'slug', author=cls.author)
+        cls.url = reverse('notes:add')
+        cls.edit_url = reverse('notes:edit', args=(cls.note.slug,))
+        cls.detail_url = reverse('notes:detail', args=(cls.note.slug,))
 
-    def test_notes_in_context(self):
-        response = self.client.get(self.detail_url)
-        # Проверяем, что объект новости находится в словаре контекста
-        # под ожидаемым именем - названием модели.
-        self.assertIn('notes', response.context)
 
+    def test_notes_in_context_for_author(self):
+        url = reverse('notes:list')
+        response = self.author_client.get(url)
+        object_list = response.context['object_list']
+        self.assertIn(self.note, object_list)
 
-    def test_anonymous_client_has_no_form(self):
-        response = self.client.get(self.detail_url)
-        self.assertNotIn('form', response.context)
+    def test_notes_in_context_for_not_author(self):
+        url = reverse('notes:list')
+        response = self.client.get(url)
+        object_list = response.context['object_list']
+        self.assertNotIn(self.note, object_list)
 
-    def test_authorized_client_has_form(self):
-        # Авторизуем клиент при помощи ранее созданного пользователя.
-        self.client.force_login(self.author)
-        response = self.client.get(self.detail_url)
+    def test_edit_pages_contains_form(self):
+        response = self.author_client.get(self.edit_url)
         self.assertIn('form', response.context)
-        # Проверим, что объект формы соответствует нужному классу формы.
+        self.assertIsInstance(response.context['form'], NoteForm)
+
+    def test_add_pages_contains_form(self):
+        response = self.author_client.get(self.url)
+        self.assertIn('form', response.context)
         self.assertIsInstance(response.context['form'], NoteForm)
