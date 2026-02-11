@@ -14,7 +14,6 @@ class TestHomePage(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-
         cls.author = User.objects.create(username='Автор заметки')
         cls.author_client = Client()
         cls.author_client.force_login(cls.author)
@@ -24,31 +23,20 @@ class TestHomePage(TestCase):
         cls.note = Note.objects.create(title='Заголовок', text = 'Текст', slug = 'slug', author=cls.author)
         cls.home_url = reverse('notes:list')
 
-        all_notes = [
-            Note(
-                title=f'Новость {index}',
-                text='Просто текст.'
-            )
-            for index in range(settings.NOTES_COUNT_ON_HOME_PAGE + 1)
-        ]
-        Note.objects.bulk_create(all_notes)
-
     def test_notes_list_for_reader(self):
-        response = self.client.get(self.home_url)
+        response = self.reader_client.get(self.home_url)
         object_list = response.context['object_list']
-        self.assertContains(self.note, object_list)
+        self.assertNotIn(self.note, object_list)
 
     def test_notes_list_for_author(self):
         response = self.author_client.get(self.home_url)
         object_list = response.context['object_list']
-        self.assertContains(self.note, object_list)
+        self.assertIn(self.note, object_list)
 
 
 class TestDetailPage(TestCase):
-
     @classmethod
     def setUpTestData(cls):
-
         cls.author = User.objects.create(username='Автор заметки')
         cls.author_client = Client()
         cls.author_client.force_login(cls.author)
@@ -56,20 +44,20 @@ class TestDetailPage(TestCase):
         cls.reader_client = Client()
         cls.reader_client.force_login(cls.reader)
         cls.note = Note.objects.create(title='Заголовок', text = 'Текст', slug = 'slug', author=cls.author)
-        cls.url = reverse('notes:add')
+        cls.add_url = reverse('notes:add')
+        cls.list_url = reverse('notes:list')
         cls.edit_url = reverse('notes:edit', args=(cls.note.slug,))
         cls.detail_url = reverse('notes:detail', args=(cls.note.slug,))
 
 
+
     def test_notes_in_context_for_author(self):
-        url = reverse('notes:list')
-        response = self.author_client.get(url)
+        response = self.author_client.get(self.list_url)
         object_list = response.context['object_list']
         self.assertIn(self.note, object_list)
 
     def test_notes_in_context_for_not_author(self):
-        url = reverse('notes:list')
-        response = self.client.get(url)
+        response = self.reader_client.get(self.list_url)
         object_list = response.context['object_list']
         self.assertNotIn(self.note, object_list)
 
@@ -79,6 +67,6 @@ class TestDetailPage(TestCase):
         self.assertIsInstance(response.context['form'], NoteForm)
 
     def test_add_pages_contains_form(self):
-        response = self.author_client.get(self.url)
+        response = self.author_client.get(self.add_url)
         self.assertIn('form', response.context)
         self.assertIsInstance(response.context['form'], NoteForm)

@@ -23,18 +23,18 @@ class TestNoteCreation(TestCase):
         cls.auth_client = Client()
         cls.auth_client.force_login(cls.user)
         cls.form_data = {'text': cls.NOTE_TEXT, 'title': cls.NOTE_TEXT, 'slug': cls.NOTE_SLUG}
-        cls.url = reverse('notes:add')
+        cls.add_url = reverse('notes:add')
         cls.url_to_notes = reverse('notes:success')
 
     def test_anonymous_user_cant_create_note(self):
-        response = self.client.post(self.url, data=self.form_data)
+        response = self.client.post(self.add_url, data=self.form_data)
         login_url = reverse('users:login')
-        expected_url = f'{login_url}?next={self.url}'
+        expected_url = f'{login_url}?next={self.add_url}'
         self.assertRedirects(response, expected_url)
         self.assertEqual(Note.objects.count(),  0)
 
     def test_user_can_create_note(self):
-        response = self.auth_client.post(self.url, data=self.form_data)
+        response = self.auth_client.post(self.add_url, data=self.form_data)
         self.assertRedirects(response, self.url_to_notes)
         self.assertEqual(Note.objects.count(), 1)
         new_note = Note.objects.get()
@@ -46,13 +46,13 @@ class TestNoteCreation(TestCase):
     def test_not_unique_slug(self):
         note = Note.objects.create(title='Заголовок', text = self.OTHER_NOTE_TEXT, slug = self.NOTE_SLUG, author=self.user)
         self.form_data['slug'] = note.slug
-        response = self.auth_client.post(self.url, data=self.form_data)
+        response = self.auth_client.post(self.add_url, data=self.form_data)
         self.assertFormError(response.context['form'], 'slug', errors=(note.slug + WARNING))
         self.assertEqual(Note.objects.count(), 1)
 
     def test_empty_slug(self):
         self.form_data.pop('slug')
-        response = self.auth_client.post(self.url, data=self.form_data)
+        response = self.auth_client.post(self.add_url, data=self.form_data)
         self.assertRedirects(response, self.url_to_notes)
         self.assertEqual(Note.objects.count(), 1)
         new_note = Note.objects.get()
