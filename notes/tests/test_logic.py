@@ -1,10 +1,9 @@
 from http import HTTPStatus
-from pytils.translit import slugify
 
 from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
 from django.urls import reverse
-
+from pytils.translit import slugify
 
 from notes.forms import WARNING
 from notes.models import Note
@@ -62,23 +61,24 @@ class TestNoteCreation(TestCase):
 
 class TestNoteEditDelete(TestCase):
     NOTE_TEXT = 'Текст заметки'
+    NOTE_TITLE = 'Заголовок'
     NEW_NOTE_TEXT = 'Обновлённый текст заметки'
+    NEW_NOTE_TITLE = 'Обновлённый заголовок'
 
     @classmethod
     def setUpTestData(cls):
         cls.author = User.objects.create(username='Автор заметки')
         cls.author_client = Client()
         cls.author_client.force_login(cls.author)
-        cls.reader = User.objects.create(username='Читатель')
-        cls.reader_client = Client()
-        cls.reader_client.force_login(cls.reader)
+        cls.not_author = User.objects.create(username='Читатель')
+        cls.not_author_client = Client()
+        cls.not_author_client.force_login(cls.not_author)
         cls.note = Note.objects.create(title='Заголовок', text = cls.NOTE_TEXT, author = cls.author)
         cls.notes_url = reverse('notes:detail', args=(cls.note.slug,))
         cls.url_to_notes = reverse('notes:success')
         cls.edit_url = reverse('notes:edit', args=(cls.note.slug,))
         cls.delete_url = reverse('notes:delete', args=(cls.note.slug,))
-        cls.form_data = {'text': cls.NEW_NOTE_TEXT, 'title': cls.note.title, 'slug': cls.note.slug}
-
+        cls.form_data = {'text': cls.NEW_NOTE_TEXT, 'title': cls.NEW_NOTE_TITLE, 'slug': cls.note.slug}
 
     def test_author_can_edit_note(self):
         response = self.author_client.post(self.edit_url, data=self.form_data)
@@ -89,7 +89,7 @@ class TestNoteEditDelete(TestCase):
         self.assertEqual(self.note.slug, self.form_data['slug'])
 
     def test_other_user_cant_edit_note(self):
-        response = self.reader_client.post(self.edit_url, data=self.form_data)
+        response = self.not_author_client.post(self.edit_url, data=self.form_data)
         self.assertEqual(response.status_code, HTTPStatus.NOT_FOUND)
         note_from_db = Note.objects.get(id=self.note.id)
         self.assertEqual(self.note.title, note_from_db.title)
@@ -102,7 +102,7 @@ class TestNoteEditDelete(TestCase):
         self.assertEqual(Note.objects.count(), 0)
 
     def test_user_cant_delete_note_of_another_user(self):
-        response = self.reader_client.post(self.delete_url)
+        response = self.not_author_client.post(self.delete_url)
         self.assertEqual(response.status_code, HTTPStatus.NOT_FOUND)
         notes_count = Note.objects.count()
         self.assertEqual(notes_count, 1)

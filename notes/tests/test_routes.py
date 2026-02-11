@@ -13,7 +13,7 @@ class TestRoutes(TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.author = User.objects.create(username='Автор')
-        cls.reader = User.objects.create(username='Посетитель')
+        cls.not_author = User.objects.create(username='Посетитель')
         cls.notes = Note.objects.create(title='Заголовок', text='Текст', author = cls.author)
 
     def test_pages_availability_for_anonymous_user(self):
@@ -44,7 +44,7 @@ class TestRoutes(TestCase):
     def test_availability_for_note_detail_edit_and_delete(self):
         users_statuses = (
             (self.author, HTTPStatus.OK),
-            (self.reader, HTTPStatus.NOT_FOUND),
+            (self.not_author, HTTPStatus.NOT_FOUND),
         )
         for user, status in users_statuses:
             self.client.force_login(user)
