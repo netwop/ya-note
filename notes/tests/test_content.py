@@ -14,46 +14,33 @@ class TestContent(TestCase):
         cls.author = User.objects.create(username='Автор заметки')
         cls.author_client = Client()
         cls.author_client.force_login(cls.author)
-        cls.reader = User.objects.create(username='Читатель')
-        cls.reader_client = Client()
-        cls.reader_client.force_login(cls.reader)
+        cls.not_author = User.objects.create(username='Читатель')
+        cls.not_author_client = Client()
+        cls.not_author_client.force_login(cls.not_author)
         cls.note = Note.objects.create(title='Заголовок', text = 'Текст', slug = 'slug', author=cls.author)
         cls.add_url = reverse('notes:add')
         cls.list_url = reverse('notes:list')
         cls.edit_url = reverse('notes:edit', args=(cls.note.slug,))
         cls.detail_url = reverse('notes:detail', args=(cls.note.slug,))
 
-    # через subtest
-    # def test_notes_in_context_for_author(self):
-    #     users_statuses = (
-    #             (self.author, True),
-    #             (self.reader, False),
-    #         )
-    #     for user, note_in_list in users_statuses:
-    #         self.client.force_login(user)
-    #         for name in (self.list_url):
-    #             with self.subTest(user=user, name=name):
-    #                 response = self.author_client.get(self.list_url)
-    #                 object_list = response.context['object_list']
-    #                 self.assertIn(self.note, object_list)
+    def test_notes_in_context_for_different_users(self):
+        users_statuses = (
+            (self.author_client, True),
+            (self.not_author_client, False),
+        )
+        for client, note_in_list in users_statuses:
+            with self.subTest(client=client, note_in_list=note_in_list):
+                response = client.get(self.list_url)
+                object_list = response.context['object_list']
+                self.assertEqual(self.note in object_list, note_in_list)
 
-    def test_notes_in_context_for_author(self):
-        response = self.author_client.get(self.list_url)
-        object_list = response.context['object_list']
-        self.assertIn(self.note, object_list)
-
-    def test_notes_in_context_for_not_author(self):
-        response = self.reader_client.get(self.list_url)
-        object_list = response.context['object_list']
-        self.assertNotIn(self.note, object_list)
-
-    # через subtest
-    def test_edit_pages_contains_form(self):
-        response = self.author_client.get(self.edit_url)
-        self.assertIn('form', response.context)
-        self.assertIsInstance(response.context['form'], NoteForm)
-
-    def test_add_pages_contains_form(self):
-        response = self.author_client.get(self.add_url)
-        self.assertIn('form', response.context)
-        self.assertIsInstance(response.context['form'], NoteForm)
+    def test_add_and_edit_pages_contains_form(self):
+        urls = (
+            self.add_url,
+            self.edit_url,
+        )
+        for url in urls:
+            with self.subTest(url=url):
+                response = self.author_client.get(url)
+                self.assertIn('form', response.context)
+                self.assertIsInstance(response.context['form'], NoteForm)
