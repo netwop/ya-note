@@ -14,7 +14,9 @@ class TestRoutes(TestCase):
     def setUpTestData(cls):
         cls.author = User.objects.create(username='Автор')
         cls.not_author = User.objects.create(username='Посетитель')
-        cls.note = Note.objects.create(title='Заголовок', text='Текст', author = cls.author)
+        cls.note = Note.objects.create(
+            title='Заголовок', text='Текст', author=cls.author
+        )
 
     def test_pages_availability_for_anonymous_user(self):
         urls = (
@@ -59,9 +61,9 @@ class TestRoutes(TestCase):
             ('notes:list', None),
             ('notes:add', None),
             ('notes:success', None),
-            ('notes:detail',(self.note.slug,)),
-            ('notes:edit',(self.note.slug,)),
-            ('notes:delete',(self.note.slug,)),
+            ('notes:detail', (self.note.slug,)),
+            ('notes:edit', (self.note.slug,)),
+            ('notes:delete', (self.note.slug,)),
         )
         login_url = reverse('users:login')
         for name, args in urls:

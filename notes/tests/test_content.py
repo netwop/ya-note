@@ -17,7 +17,9 @@ class TestContent(TestCase):
         cls.not_author = User.objects.create(username='Читатель')
         cls.not_author_client = Client()
         cls.not_author_client.force_login(cls.not_author)
-        cls.note = Note.objects.create(title='Заголовок', text = 'Текст', slug = 'slug', author=cls.author)
+        cls.note = Note.objects.create(
+            title='Заголовок', text='Текст', slug='slug', author=cls.author
+        )
         cls.add_url = reverse('notes:add')
         cls.list_url = reverse('notes:list')
         cls.edit_url = reverse('notes:edit', args=(cls.note.slug,))
